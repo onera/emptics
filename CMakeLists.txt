@@ -33,7 +33,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 project(
   emptics VERSION 0.1.0
   DESCRIPTION "empty project to prepare SoNICS dependencies"
-  LANGUAGES CXX
+  LANGUAGES C CXX Fortran
 )
 
 option(${PROJECT_NAME}_FORCE_TESTS "Make CTest run the tests" ON)
@@ -72,38 +72,45 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # ------------------------------------------------------------------------------
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
+find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development NumPy)
 find_package(Mpi4Py REQUIRED)
 
 find_package(Cython REQUIRED)
-find_package(pybind11 REQUIRED 2.8 CONFIG)
+#find_package(pybind11 2.8 REQUIRED CONFIG)
+include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
+find_or_fetch_pybind11()
 
 find_package(HWLOC REQUIRED)
 find_package(Threads REQUIRED) # Used by tasky
 
-find_package(fmt REQUIRED 6.2 CONFIG)
+find_package(fmt 6.2 REQUIRED CONFIG)
 
-find_package(PTSCOTCH 6.0.0)
+find_package(PTSCOTCH 6.0.9)
 find_package(ParMETIS 4.0.3)
+if (NOT (PTSCOTCH_FOUND OR ParMETIS_FOUND))
+  message(FATAL_ERROR "Need a partitioner but neither PtScotch nor ParMetis")
+endif()
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
-find_package(doctest 2.4.11 CONFIG)
+if(${PROJECT_NAME}_FORCE_TESTS)
+  find_package(doctest 2.4.11 REQUIRED CONFIG)
+endif()
 
 # For GPU
 if(${PROJECT_NAME}_FORCE_CUDA)
   find_package(CUDAToolkit REQUIRED)
   find_package(Thrust REQUIRED)
 endif()
-if(${PROJECT_NAME}_FORCE_HIP) # HIP
+if(${PROJECT_NAME}_FORCE_HIP)
   find_package(rocprim REQUIRED)
   find_package(rocthrust REQUIRED)
 endif()
 
 ## Profiling
 if(${PROJECT_NAME}_FORCE_PROFILING)
-  find_package(PAPI)
+  find_package(PAPI REQUIRED)
 endif()
 
 # Not used (yet?)
@@ -179,19 +186,6 @@ endif()
 # ------------------------------------------------------------------------------
 include(${PROJECT_UTILS_CMAKE_DIR}/write_build_env_file.cmake)
 write_build_env_file()
-
-# ----------------------------------------------------------------------
-# Copy logging.conf example to build folder
-# ----------------------------------------------------------------------
-if (EXISTS "${PROJECT_BINARY_DIR}/logging.conf")
-  message("File ${PROJECT_BINARY_DIR}/logging.conf already present")
-else()
-  configure_file(
-    ${PROJECT_SOURCE_DIR}/share/logging.conf.example
-    ${PROJECT_BINARY_DIR}/logging.conf
-    @ONLY
-  )
-endif()
 
 # ------------------------------------------------------------------------------
 # Installation
