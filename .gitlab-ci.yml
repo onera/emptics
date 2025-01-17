@@ -1,0 +1,40 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never # Prevent duplicated pipeline by removing MR pipelines
+    - if: $CI_COMMIT_TAG
+      when: never # No CI for new tag
+    - when: always
+
+default:
+  tags:
+    - juno-slurm
+  id_tokens:
+    CI_JOB_JWT:
+      aud: https://gitlab.onera.net
+
+stages:
+  - test
+
+init_repo:
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
+    SCHEDULER_PARAMETERS: "--ntasks=2 --nodes=1-1 --time=00:30:00"
+  parallel:
+    matrix:
+      - ENV_PATH: /tmp_user/juno/sonics/dist/socle_cfd6/source_gcc14.sh
+        ENV_NAME: socle_cfd6
+      - ENV_PATH: /tmp_user/juno/sonics/dist/socle_cfd7/source.sh
+        ENV_NAME: socle_cfd7
+  stage: test
+  script:
+    - git submodule update --init
+    - mkdir build_${ENV_NAME} && cd build_${ENV_NAME}
+    - source ${ENV_PATH}
+    - echo ${doctest_ROOT}
+    - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_FORCE_TESTS=ON -Demptics_FORCE_CUDA=OFF -Demptics_FORCE_HIP=OFF -Demptics_FORCE_DOCUMENTATION=OFF -Demptics_FORCE_PROFILING=OFF
+    - make -j
+    - source source.sh
+    - mpirun -np 1 python ../test/test_emptics.py
+    - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py
