@@ -70,20 +70,20 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # ------------------------------------------------------------------------------
 # Dependencies
 # ------------------------------------------------------------------------------
+include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
+
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran)
 
 find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development NumPy)
 find_package(Mpi4Py REQUIRED)
 
 find_package(Cython REQUIRED)
-#find_package(pybind11 2.8 REQUIRED CONFIG)
-include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
 find_or_fetch_pybind11()
 
 find_package(HWLOC REQUIRED)
 find_package(Threads REQUIRED) # Used by tasky
 
-find_package(fmt 6.2 REQUIRED CONFIG)
+find_or_fetch_fmt()
 
 find_package(PTSCOTCH 6.0.9)
 find_package(ParMETIS 4.0.3)
@@ -94,8 +94,18 @@ endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
+find_package(MKL)
+if (MKL_FOUND)
+  # If BLAS and LAPACK are implemented by the MKL,
+  # We need to add stuff to actually make the BLAS of MKL usable by CMake
+  if (NOT ${CMAKE_BUILD_TYPE} MATCHES "Debug")
+    # Make it fast
+    add_compile_definitions(MKL_DIRECT_CALL_SEQ) # Do not check returned error code
+  endif()
+endif()
+
 if(${PROJECT_NAME}_FORCE_TESTS)
-  find_package(doctest 2.4.11 REQUIRED CONFIG)
+  find_or_fetch_doctest()
 endif()
 
 # For GPU
@@ -165,6 +175,21 @@ target_link_libraries(${PROJECT_NAME}
     Threads::Threads
     pybind11::pybind11_headers
 )
+
+if (MKL_FOUND)
+  # If BLAS and LAPACK are implemented by the MKL,
+  # We need to add stuff to actually make the BLAS of MKL usable by CMake
+  message("MKL_LIBRARIES = ${MKL_LIBRARIES}")
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${MKL_LIBRARIES})
+endif()
+
+
+#message("BLAS_LINKER_FLAGS = ${BLAS_LINKER_FLAGS}")
+#message("BLAS_LIBRARIES = ${BLAS_LIBRARIES}")
+#if (BLAS_FOUND)
+#    target_compile_options(${PROJECT_NAME} PRIVATE ${BLAS_LINKER_FLAGS})
+#    target_link_libraries(${PROJECT_NAME} PUBLIC ${BLAS_LIBRARIES})
+#endif ()
 
 if(${PROJECT_NAME}_FORCE_CUDA)
   target_link_libraries(${PROJECT_NAME_DEVICE}
