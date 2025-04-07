@@ -67,6 +67,8 @@ import keyword
 import logging as LOG
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Polygon
+from matplotlib.ticker import MaxNLocator
 import numbers
 import pandas
 import plotly.express as px

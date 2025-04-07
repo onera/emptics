@@ -19,15 +19,11 @@ from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 from h5py import h5f
 
 import math
-from matplotlib.patches import Rectangle, Polygon
-from matplotlib.ticker import MaxNLocator
 from mpi4py import MPI
 
 from pygments import token
 from pygments.lexer import ExtendedRegexLexer,LexerContext
 
-from ruamel.yaml import YAML
-from ruamel.yaml import parser
 import yaml
 
 from typing import List,NewType,Union
