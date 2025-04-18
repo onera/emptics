@@ -37,4 +37,5 @@ init_repo:
     - make -j
     - source source.sh
     - mpirun -np 1 python ../test/test_emptics.py
+    - mpirun -np 2 ./test/emptics_doctest_unit_tests
     - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py

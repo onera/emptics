@@ -35,6 +35,7 @@ project(
   DESCRIPTION "empty project to prepare SoNICS dependencies"
   LANGUAGES C CXX Fortran
 )
+find_package(HDF5 REQUIRED)
 
 option(${PROJECT_NAME}_FORCE_TESTS "Make CTest run the tests" ON)
 option(${PROJECT_NAME}_FORCE_CUDA "Fail if CUDA is not detected or has an error" OFF)
@@ -93,6 +94,7 @@ endif()
 
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
+
 
 find_package(MKL)
 if (MKL_FOUND)
@@ -165,7 +167,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     MPI::MPI_CXX
-    Mpi4Py::Mpi4Py
     Python::Python
     Python::NumPy
     Mpi4Py::Mpi4Py
@@ -174,6 +175,7 @@ target_link_libraries(${PROJECT_NAME}
     fmt::fmt
     Threads::Threads
     pybind11::pybind11_headers
+    hdf5::hdf5
 )
 
 if (MKL_FOUND)
@@ -229,9 +231,7 @@ install_python_modules(${PROJECT_NAME})
 # Testing
 # ------------------------------------------------------------------------------
 include(CTest)
-if (${PROJECT_NAME}_ENABLE_TESTS)
-  add_subdirectory(test)
-endif()
+add_subdirectory(test)
 
 
 # Not done
