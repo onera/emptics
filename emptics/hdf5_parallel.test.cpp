@@ -4,8 +4,6 @@
 #include "stdlib.h"
 
 MPI_TEST_CASE("Test HDF5 parallel", 2) {
-    printf("Toto\n");
-
     // Taken from https://github.com/HDFGroup/hdf5/blob/hdf5_1_14_6/HDF5Examples/C/H5PAR/ph5_dataset.c
     /*
      *  This example writes data to the HDF5 file.
