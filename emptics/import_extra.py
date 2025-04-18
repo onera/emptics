@@ -83,14 +83,12 @@ import tempfile
 import textwrap
 import time
 import timeit
-import tkinter as tk
 import traceback
 import types
 import typing
 import urllib
 import urllib.parse
 import urllib.request
-import urllib3
 import warnings
 import weakref
 
