@@ -18,7 +18,7 @@ void call_blas() {
   double C[4] = {0.,0.,0.,0.};
 
 
-  std::cout << "calling cblas_dgemm\n";
+  std::cout << "calling BLAS dgemm\n";
   std::cout << "A = [["
             << A[0] << ","
             << A[1] << "],["
