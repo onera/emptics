@@ -16,27 +16,68 @@ default:
 stages:
   - test
 
-init_repo:
+build_test_socle_6:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--ntasks=2 --nodes=1-1 --time=00:30:00"
-  parallel:
-    matrix:
-      - ENV_PATH: /tmp_user/juno/sonics/dist/socle_cfd6/source_gcc14.sh
-        ENV_NAME: socle_cfd6
-      - ENV_PATH: /tmp_user/juno/sonics/dist/socle_cfd7/source.sh
-        ENV_NAME: socle_cfd7
+    SCHEDULER_PARAMETERS: "--ntasks=4 --nodes=1-1 --time=00:05:00"
   stage: test
   script:
+    - ENV_NAME=socle_cfd6
+    - source /tmp_user/juno/sonics/dist/socle_cfd6/source_gcc14.sh
+
     - git submodule update --init
+
     - mkdir build_${ENV_NAME} && cd build_${ENV_NAME}
-    - source ${ENV_PATH}
-    - echo ${doctest_ROOT}
-    - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_FORCE_TESTS=ON -Demptics_FORCE_CUDA=OFF -Demptics_FORCE_HIP=OFF -Demptics_FORCE_DOCUMENTATION=OFF -Demptics_FORCE_PROFILING=OFF
+    - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_TEST_HDF5_THROUGH_CMAKE=OFF
     - make -j
     - source source.sh
+    #- mpirun -np 2 emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
     - mpirun -np 1 python ../test/test_emptics.py
-    - mpirun -np 2 ./test/emptics_doctest_unit_tests # check hdf5 in particular
     - mpirun -np 2 python ../emptics/check_mpi4py.py
     - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py
+
+
+build_test_socle_7:
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
+    SCHEDULER_PARAMETERS: "--ntasks=4 --nodes=1-1 --time=00:05:00"
+  stage: test
+  script:
+    - ENV_NAME=socle_cfd7
+    - source /tmp_user/juno/sonics/dist/socle_cfd7/source_gcc_cuda_2025-05.sh
+
+    - git submodule update --init
+
+    - echo "EMPTICS_SOCLE_7_BUILD_DIR=$PWD/build_${ENV_NAME}" >> build.env
+    - mkdir build_${ENV_NAME} && cd build_${ENV_NAME}
+    - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_TEST_HDF5_THROUGH_CMAKE=OFF -DCMAKE_GPU_RUNTIME=CUDA
+    - make -j
+    - source source.sh
+    #- mpirun -np 2 emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
+    - mpirun -np 1 python ../test/test_emptics.py
+    - mpirun -np 2 python ../emptics/check_mpi4py.py
+    - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py
+
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 48 hours
+
+
+test_gpu_socle_7:
+  needs: [build_test_socle_7]
+  variables:
+    GIT_STRATEGY: none
+    GIT_SUBMODULE_STRATEGY: none
+  stage: test
+  tags:
+    - juno-shell # We launch SLURM inside with salloc
+  script:
+    - ENV_NAME=socle_cfd7
+    - source /tmp_user/juno/sonics/dist/socle_cfd7/source_gcc_cuda_2025-05.sh
+
+    - echo $EMPTICS_SOCLE_7_BUILD_DIR
+    - cd $EMPTICS_SOCLE_7_BUILD_DIR
+    - salloc --partition=gpu --ntasks=1 --exclusive --nodes=1-1 --time=00:01:00 -- srun ./emptics_gpu
