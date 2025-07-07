@@ -1,3 +1,4 @@
+import matplotlib # FIXME necessary for `import matplotlib` to work on adastra
 import emptics
 
 print("Test sample functions")

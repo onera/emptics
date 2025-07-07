@@ -37,10 +37,11 @@ project(
 )
 
 option(${PROJECT_NAME}_FORCE_TESTS "Make CTest run the tests" ON)
-option(${PROJECT_NAME}_FORCE_CUDA "Fail if CUDA is not detected or has an error" OFF)
-option(${PROJECT_NAME}_FORCE_HIP "Fail if HIP is not detected or has an error" OFF)
 option(${PROJECT_NAME}_FORCE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
-option(${PROJECT_NAME}_FORCE_PROFILING "Enable profiling tools for ${PROJECT_NAME}" OFF)
+
+# This can be turned off because some HDF5/CMake combinations are broken,
+# And we don't actually care for SoNICS because we only use HDF5 through h5py
+option(${PROJECT_NAME}_TEST_HDF5_THROUGH_CMAKE "Test HDF5 with CMake" ON)
 
 ## Compiler flags
 ### C++ standard
@@ -94,6 +95,7 @@ endif()
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
+
 find_package(MKL)
 if (MKL_FOUND)
   # If BLAS and LAPACK are implemented by the MKL,
@@ -106,21 +108,6 @@ endif()
 
 if(${PROJECT_NAME}_FORCE_TESTS)
   find_or_fetch_doctest()
-endif()
-
-# For GPU
-if(${PROJECT_NAME}_FORCE_CUDA)
-  find_package(CUDAToolkit REQUIRED)
-  find_package(Thrust REQUIRED)
-endif()
-if(${PROJECT_NAME}_FORCE_HIP)
-  find_package(rocprim REQUIRED)
-  find_package(rocthrust REQUIRED)
-endif()
-
-## Profiling
-if(${PROJECT_NAME}_FORCE_PROFILING)
-  find_package(PAPI REQUIRED)
 endif()
 
 # Not used (yet?)
@@ -152,6 +139,7 @@ file(GLOB_RECURSE all_src_files
 )
 
 set(src_files ${all_src_files})
+list(FILTER src_files EXCLUDE REGEX "${src_dir}/apps/.*")
 list(FILTER src_files EXCLUDE REGEX ".*\\.test\\.cpp$")
 list(FILTER src_files EXCLUDE REGEX ".*\\.pybind\\.cpp$")
 
@@ -165,7 +153,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
     MPI::MPI_CXX
-    Mpi4Py::Mpi4Py
     Python::Python
     Python::NumPy
     Mpi4Py::Mpi4Py
@@ -184,27 +171,75 @@ if (MKL_FOUND)
 endif()
 
 
-#message("BLAS_LINKER_FLAGS = ${BLAS_LINKER_FLAGS}")
-#message("BLAS_LIBRARIES = ${BLAS_LIBRARIES}")
-#if (BLAS_FOUND)
-#    target_compile_options(${PROJECT_NAME} PRIVATE ${BLAS_LINKER_FLAGS})
-#    target_link_libraries(${PROJECT_NAME} PUBLIC ${BLAS_LIBRARIES})
-#endif ()
+# Test hdf5 parallel
+if (${PROJECT_NAME}_TEST_HDF5_THROUGH_CMAKE)
+  find_package(HDF5 REQUIRED)
 
-if(${PROJECT_NAME}_FORCE_CUDA)
-  target_link_libraries(${PROJECT_NAME_DEVICE}
+  add_executable(${PROJECT_NAME}_hdf5_parallel ${src_dir}/apps/hdf5_parallel.cpp)
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${include_dir}>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+  )
+  target_link_libraries(${PROJECT_NAME}_hdf5_parallel
     PUBLIC
-      CUDA::cudart
+      MPI::MPI_CXX
+      hdf5::hdf5
   )
 endif()
-if(${PROJECT_NAME}_FORCE_HIP)
-  target_link_libraries(${PROJECT_NAME_DEVICE}
-    PRIVATE
-      hip::device
-      roc::rocprim
-      roc::rocthrust
+
+# Test GPU
+if (CMAKE_GPU_RUNTIME)
+  # Find GPU packages
+  include(CheckLanguage)
+  check_language(${CMAKE_GPU_RUNTIME})
+
+  if (CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+    set(CUDA_SEPARABLE_COMPILATION ON)
+    string(APPEND CMAKE_CUDA_FLAGS " --expt-relaxed-constexpr")
+
+    project_find_package(CUDAToolkit REQUIRED)
+    project_find_package(Thrust REQUIRED CONFIG)
+  elseif (CMAKE_HIP_COMPILER)
+    enable_language(HIP)
+    set(CMAKE_HIP_ARCHITECTURES "gfx90a") # Note: Should be not necessary from CMake 3.28 on (see CMAKE_HIP_PLATFORM)
+    set(CMAKE_HIP_STANDARD_REQUIRED ON)
+
+    project_find_package(rocprim REQUIRED)
+    project_find_package(rocthrust REQUIRED)
+    add_compile_definitions("THRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
+  else()
+    message(FATAL_ERROR "Option CMAKE_GPU_RUNTIME=${CMAKE_GPU_RUNTIME} was given, but failed to find a GPU language")
+  endif()
+
+  # Create GPU executable
+  add_executable(${PROJECT_NAME}_gpu ${src_dir}/apps/gpu.cu)
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${include_dir}>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
   )
-endif()
+
+  if (CMAKE_CUDA_COMPILER)
+    target_link_libraries(${PROJECT_NAME}_gpu
+      PUBLIC
+        CUDA::cudart
+      PRIVATE
+        Thrust::Thrust
+    )
+  endif()
+  if (CMAKE_HIP_COMPILER)
+    target_link_libraries(${PROJECT_NAME}_gpu
+      PUBLIC
+        hip::host
+      #PRIVATE
+      #  roc::rocthrust # Fails on Adastra. When commented out, we still get Thrust though...
+    )
+  endif()
+
+endif() # CMAKE_GPU_RUNTIME
+
 
 # ------------------------------------------------------------------------------
 # Create file to source build environnement
@@ -223,31 +258,3 @@ target_install(${PROJECT_NAME})
 include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
 compile_install_pybind_module(${PROJECT_NAME})
 install_python_modules(${PROJECT_NAME})
-
-
-# ------------------------------------------------------------------------------
-# Testing
-# ------------------------------------------------------------------------------
-include(CTest)
-if (${PROJECT_NAME}_ENABLE_TESTS)
-  add_subdirectory(test)
-endif()
-
-
-# Not done
-## ------------------------------------------------------------------------------
-## Build documentation
-## ------------------------------------------------------------------------------
-#if(${PROJECT_NAME}_ENABLE_DOCUMENTATION)
-#  include(${PROJECT_UTILS_CMAKE_DIR}/build_documentation.cmake)
-#  build_sphinx_documentation()
-#endif()
-
-# ------------------------------------------------------------------------------
-# Summary
-# ------------------------------------------------------------------------------
-get_directory_property(top_lvl_cmakelists PARENT_DIRECTORY)
-if(top_lvl_cmakelists STREQUAL ${PROJECT_SOURCE_DIR})
-  include(FeatureSummary)
-  feature_summary(WHAT ALL)
-endif()

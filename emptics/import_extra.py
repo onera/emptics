@@ -65,8 +65,6 @@ import itertools
 import json
 import keyword
 import logging as LOG
-import matplotlib
-import matplotlib.pyplot as plt
 import numbers
 import pandas
 import plotly.express as px
@@ -85,13 +83,18 @@ import tempfile
 import textwrap
 import time
 import timeit
-import tkinter as tk
 import traceback
 import types
 import typing
 import urllib
 import urllib.parse
 import urllib.request
-import urllib3
 import warnings
 import weakref
+
+print("import matplotlib...")
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle, Polygon
+from matplotlib.ticker import MaxNLocator
+print("import matplotlib -- done")
