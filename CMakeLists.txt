@@ -39,6 +39,8 @@ project(
 option(${PROJECT_NAME}_FORCE_TESTS "Make CTest run the tests" ON)
 option(${PROJECT_NAME}_FORCE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 
+option(${PROJECT_NAME}_TEST_PARMETIS "Test (par)metis" ON)
+
 # This can be turned off because some HDF5/CMake combinations are broken,
 # And we don't actually care for SoNICS because we only use HDF5 through h5py
 option(${PROJECT_NAME}_TEST_HDF5_THROUGH_CMAKE "Test HDF5 with CMake" ON)
@@ -168,6 +170,23 @@ if (MKL_FOUND)
   # We need to add stuff to actually make the BLAS of MKL usable by CMake
   message("MKL_LIBRARIES = ${MKL_LIBRARIES}")
   target_link_libraries(${PROJECT_NAME} PUBLIC ${MKL_LIBRARIES})
+endif()
+
+
+# Test (par)metis parallel
+if (${PROJECT_NAME}_TEST_PARMETIS)
+  find_package(ParMETIS REQUIRED)
+
+  add_executable(${PROJECT_NAME}_parmetis ${src_dir}/apps/parmetis.cpp)
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${include_dir}>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+  )
+  target_link_libraries(${PROJECT_NAME}_parmetis
+    PUBLIC
+      MPI::MPI_CXX
+      ParMETIS::ParMETIS
+  )
 endif()
 
 

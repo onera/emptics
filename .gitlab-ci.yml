@@ -32,7 +32,8 @@ build_test_socle_6:
     - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_TEST_HDF5_THROUGH_CMAKE=OFF
     - make -j
     - source source.sh
-    #- mpirun -np 2 emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
+    #- mpirun -np 2 ./emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
+    - mpirun -np 2 ./emptics_parmetis
     - mpirun -np 1 python ../test/test_emptics.py
     - mpirun -np 2 python ../emptics/check_mpi4py.py
     - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py
@@ -55,7 +56,8 @@ build_test_socle_7:
     - cmake -S .. -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF -Demptics_TEST_HDF5_THROUGH_CMAKE=OFF -DCMAKE_GPU_RUNTIME=CUDA
     - make -j
     - source source.sh
-    #- mpirun -np 2 emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
+    #- mpirun -np 2 ./emptics_hdf5_parallel # on JUNO, emptics_TEST_HDF5_THROUGH_CMAKE=OFF because HDF5 is broken (see https://github.com/HDFGroup/hdf5/issues/2621)
+    - mpirun -np 2 ./emptics_parmetis
     - mpirun -np 1 python ../test/test_emptics.py
     - mpirun -np 2 python ../emptics/check_mpi4py.py
     - mpirun -np 2 python ../emptics/check_h5py_with_mpi.py

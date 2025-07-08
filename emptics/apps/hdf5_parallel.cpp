@@ -1,5 +1,3 @@
-#include "doctest/extensions/doctest_mpi.h"
-
 #include "hdf5.h"
 #include "stdlib.h"
 #include "stdio.h"
