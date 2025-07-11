@@ -40,6 +40,7 @@ option(${PROJECT_NAME}_FORCE_TESTS "Make CTest run the tests" ON)
 option(${PROJECT_NAME}_FORCE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 
 option(${PROJECT_NAME}_TEST_PARMETIS "Test (par)metis" ON)
+option(${PROJECT_NAME}_TEST_PTSCOTCH "Test ptscotch" ON)
 
 # This can be turned off because some HDF5/CMake combinations are broken,
 # And we don't actually care for SoNICS because we only use HDF5 through h5py
@@ -173,7 +174,25 @@ if (MKL_FOUND)
 endif()
 
 
-# Test (par)metis parallel
+# Test ptscotch
+if (${PROJECT_NAME}_TEST_PTSCOTCH)
+  find_package(PTSCOTCH REQUIRED)
+
+  add_executable(${PROJECT_NAME}_ptscotch ${src_dir}/apps/ptscotch.cpp)
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${include_dir}>
+    $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+  )
+  target_include_directories(${PROJECT_NAME}_ptscotch
+                             PRIVATE $<BUILD_INTERFACE:${PTSCOTCH_INCLUDE_DIRS}>)
+  target_link_libraries(${PROJECT_NAME}_ptscotch
+    PUBLIC
+      MPI::MPI_CXX
+      ${PTSCOTCH_LIBRARIES}
+  )
+endif()
+
+# Test (par)metis
 if (${PROJECT_NAME}_TEST_PARMETIS)
   find_package(ParMETIS REQUIRED)
 
