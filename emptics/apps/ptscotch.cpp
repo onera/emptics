@@ -1,22 +1,25 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <cstdint>
 #include "stdio.h"
 #include "mpi.h"
 
 #include <ptscotch.h>
 
-void printa(const std::string             &name,
-            const std::vector<SCOTCH_Num> &a) {
-  printf("%s = ", name.c_str());
+inline void printa(const std::string             &name,
+                   const std::vector<SCOTCH_Num> &a)
+{
+  std::string s = name + " = ";
   for (size_t i=0; i<a.size(); ++i) {
-    printf("%i ", a.data()[i]);
+    s += std::to_string(a[i]) + " ";
   }
-  printf("\n");
+  s += "\n";
+  std::cout << s;
 }
 
 int main(int argc, char *argv[]) {
-  printf("Test ptscotch\n");
+  std::cout << "Test ptscotch\n";
 
   MPI_Init(&argc, &argv);
 
@@ -25,7 +28,7 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(comm, &mpi_size);
   MPI_Comm_rank(comm, &mpi_rank);
   if (mpi_size < 2) {
-    printf("The ptscotch test should be launched with at least two processes\n");
+    std::cout << "The ptscotch test should be launched with at least two processes\n";
     return 1;
   }
 
@@ -104,7 +107,7 @@ int main(int argc, char *argv[]) {
     ierr = SCOTCH_dgraphCheck(&graph);
 
     if (ierr) {
-      printf("PPART error : Error in PT-Scotch graph check\n");
+      std::cout << "Error in PT-Scotch graph check\n";
       exit(1);
     }
 
@@ -118,12 +121,12 @@ int main(int argc, char *argv[]) {
                              _part);    /* parts[i] donne le numero */
 
     std::string prefix = "["+std::to_string(mpi_rank)+"]  > part";
-    printf("[%d]  > ierr = %i\n", mpi_rank, ierr);
+    std::cout << "[ " << mpi_rank << "]  > ierr = " << ierr << "\n";
     printa(prefix, part);
 
     if (mpi_rank==0) {
-      printf("     ref_result: part = [0,0, 0,1]");
-      printf("\t--> same partitioning as Parmetis test n°4\n");
+      std::cout << "     ref_result: part = [0,0, 0,1]";
+      std::cout << "\t--> same partitioning as Parmetis test n°4\n";
     }
     SCOTCH_stratExit(&strat);
     SCOTCH_dgraphExit(&graph);

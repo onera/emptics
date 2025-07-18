@@ -7,17 +7,19 @@
 #include <metis.h>
 #include <parmetis.h>
 
-void printa(const std::string &name,
-            const std::vector<int> &a) {
-  printf("%s = ", name.c_str());
+inline void printa(const std::string        &name,
+                   const std::vector<idx_t> &a)
+{
+  std::string s = name + " = ";
   for (size_t i=0; i<a.size(); ++i) {
-    printf("%i ", a.data()[i]);
+    s += std::to_string(a[i]) + " ";
   }
-  printf("\n");
+  s += "\n";
+  std::cout << s;
 }
 
 int main(int argc, char *argv[]) {
-  printf("Test (par)metis\n");
+  std::cout << "Test (par)metis\n";
 
   MPI_Init(&argc, &argv);
 
@@ -26,10 +28,11 @@ int main(int argc, char *argv[]) {
   MPI_Comm_size(comm, &mpi_size);
   MPI_Comm_rank(comm, &mpi_rank);
   if (mpi_size < 2) {
-    printf("The (par)metis test should be launched with at least two processes\n");
+    std::cout << "The (par)metis test should be launched with at least two processes\n";
     return 1;
   }
 
+  idx_t n_part = mpi_size;
 
   /**
    * METIS test
@@ -58,27 +61,27 @@ int main(int argc, char *argv[]) {
       idx_t edgecut;
       std::vector<idx_t> part(n);
 
-      printf("\n");
-      printf("Test n°1: metis: no given weight\n");
-      int status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), NULL, NULL, NULL, &mpi_size,
+      std::cout << "\n";
+      std::cout << "Test n°1: metis: no given weight\n";
+      int status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), NULL, NULL, NULL, &n_part,
       NULL, NULL, NULL, &edgecut, part.data());
 
-      printf("  > status = %i\n", status);
-      printf("  > edgecut = %i\n", edgecut);
+      std::cout << "  > status = " << status << "\n";
+      std::cout << "  > edgecut = " << edgecut << "\n";
       printa("  > part", part);
-      printf("  ref_result: part = [0,0,0,0]");
-      printf("\t--> metis didn't cut any edge because we didn't give it any clue about balancing constaints\n");
+      std::cout << "  ref_result: part = [0,0,0,0]";
+      std::cout << "\t--> metis didn't cut any edge because we didn't give it any clue about balancing constaints\n";
 
-      printf("\n");
-      printf("Test n°2: metis: given weight\n");
-      status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), vwgt.data(), NULL, NULL, &mpi_size,
+      std::cout << "\n";
+      std::cout << "Test n°2: metis: given weight\n";
+      status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), vwgt.data(), NULL, NULL, &n_part,
       NULL, NULL, NULL, &edgecut, part.data());
 
-      printf("  > status = %i\n", status);
-      printf("  > edgecut = %i\n", edgecut);
+      std::cout << "  > status = " << status << "\n";
+      std::cout << "  > edgecut = " << edgecut << "\n";
       printa("  > part", part);
-      printf("  ref_result: part = [1,1,1,0]");
-      printf("\t--> metis tries to distribute vertices with huge weights into different partitions\n");
+      std::cout << "  ref_result: part = [1,1,1,0]";
+      std::cout << "\t--> metis tries to distribute vertices with huge weights into different partitions\n";
     }
 
 
@@ -92,24 +95,24 @@ int main(int argc, char *argv[]) {
      *
      */
     {
-      printf("\n");
-      printf("Test n°3: metis: non-connex graph\n");
+      std::cout << "\n";
+      std::cout << "Test n°3: metis: non-connex graph\n";
       idx_t  n      = 4;
       idx_t  ncon   = 1;
       std::vector<idx_t> xadj   = {0, 1 ,2, 3, 4};
       std::vector<idx_t> adjncy = {2, 3, 0, 1};
       idx_t objval;
       std::vector<idx_t> part(n);
-      printf("mpi_size = %i\n", mpi_size);
+      std::cout << "mpi_size = " << mpi_size << "\n";
 
-      int status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), NULL, NULL, NULL, &mpi_size,
+      int status = METIS_PartGraphKway(&n, &ncon, xadj.data(), adjncy.data(), NULL, NULL, NULL, &n_part,
         NULL, NULL, NULL, &objval, part.data());
 
-      printf("  > status = %i\n", status);
-      printf("  > objval = %i\n", objval);
+      std::cout << "  > status = " << status << "\n";
+      std::cout << "  > objval = " << objval << "\n";
       printa("  > part", part);
-      printf("  ref_result: part = [1,0,1,0]");
-      printf("\t--> metis can distribute easily because of non-connexity\n");
+      std::cout << "  ref_result: part = [1,0,1,0]";
+      std::cout << "\t--> metis can distribute easily because of non-connexity\n";
     }
   }
 
@@ -137,7 +140,7 @@ int main(int argc, char *argv[]) {
     std::vector<idx_t > xadjdist;
     std::vector<idx_t > adjncydist;
     std::vector<idx_t > vwgt;
-    std::vector<real_t> tpwgt = {1.f/mpi_size, 1.f/mpi_size};
+    std::vector<real_t> tpwgt = {1.f/n_part, 1.f/n_part};
     std::vector<real_t> ubvec = {1.05f};
     std::vector<idx_t > vtxdist = {0, 2, 4};
     idx_t n = vtxdist[mpi_rank+1]-vtxdist[mpi_rank];
@@ -156,22 +159,22 @@ int main(int argc, char *argv[]) {
 
 
     if (mpi_rank==0) {
-      printf("\n");
-      printf("Test n°4: parmetis\n");
+      std::cout << "\n";
+      std::cout << "Test n°4: parmetis\n";
     }
     idx_t edgecut;
     std::vector<idx_t> partdist(n);
     idx_t status =  ParMETIS_V3_PartKway(vtxdist.data(), xadjdist.data(), adjncydist.data(), vwgt.data(), NULL,
-                                        &wgtflag, &numflag, &ncon, &mpi_size, tpwgt.data(), ubvec.data(),
+                                        &wgtflag, &numflag, &ncon, &n_part, tpwgt.data(), ubvec.data(),
                                          options, &edgecut, partdist.data(), &comm);
 
     std::string prefix = "["+std::to_string(mpi_rank)+"]  > part";
-    printf("[%d]  > status  = %i\n", mpi_rank, status);
-    printf("[%d]  > edgecut = %i\n", mpi_rank, edgecut);
+    std::cout << "[" << mpi_rank << "]  > status  = " << status << "\n";
+    std::cout << "[" << mpi_rank << "]  > edgecut = " << edgecut << "\n";
     printa(prefix, partdist);
     if (mpi_rank==0) {
-      printf("     ref_result: part = [0,0, 0,1]");
-      printf("\t--> same partitioning as test n°2 (but inverted)\n");
+      std::cout << "     ref_result: part = [0,0, 0,1]";
+      std::cout << "\t--> same partitioning as test n°2 (but inverted)\n";
     }
   }
   MPI_Finalize();
